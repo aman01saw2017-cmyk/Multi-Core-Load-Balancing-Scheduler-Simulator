@@ -1,0 +1,611 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Multi-Core Load Balancing Scheduler Simulator</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2em;
+            margin-bottom: 10px;
+        }
+
+        .controls {
+            padding: 20px 30px;
+            background: #f8f9fa;
+            border-bottom: 2px solid #e0e0e0;
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .control-group {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        button {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+
+        .btn-start {
+            background: #28a745;
+            color: white;
+        }
+
+        .btn-pause {
+            background: #ffc107;
+            color: #333;
+        }
+
+        .btn-reset {
+            background: #dc3545;
+            color: white;
+        }
+
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+
+        select, input {
+            padding: 8px 12px;
+            border: 2px solid #ddd;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+
+        .add-process-form {
+            background: #f8f9fa;
+            padding: 20px 30px;
+            border-bottom: 2px solid #e0e0e0;
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            align-items: flex-end;
+        }
+
+        .form-field {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .form-field label {
+            font-size: 12px;
+            font-weight: 600;
+            color: #666;
+        }
+
+        .stats-panel {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            padding: 20px 30px;
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+        }
+
+        .stat-card {
+            background: white;
+            padding: 15px;
+            border-radius: 12px;
+            text-align: center;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+
+        .stat-label {
+            font-size: 12px;
+            color: #666;
+            text-transform: uppercase;
+            font-weight: 600;
+        }
+
+        .stat-value {
+            font-size: 24px;
+            font-weight: bold;
+            color: #667eea;
+            margin-top: 5px;
+        }
+
+        .cores-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 20px;
+            padding: 30px;
+        }
+
+        .core-card {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            transition: all 0.3s;
+            border: 2px solid #e0e0e0;
+        }
+
+        .core-card.overloaded {
+            border-color: #dc3545;
+            background: #fff5f5;
+        }
+
+        .core-header {
+            font-size: 20px;
+            font-weight: bold;
+            margin-bottom: 15px;
+            color: #667eea;
+        }
+
+        .current-process {
+            background: #f0f0f0;
+            padding: 10px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+        }
+
+        .process-name {
+            font-weight: bold;
+            color: #333;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 30px;
+            background: #e0e0e0;
+            border-radius: 15px;
+            overflow: hidden;
+            margin-top: 10px;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea, #764ba2);
+            transition: width 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 12px;
+            font-weight: bold;
+        }
+
+        .queue-list {
+            margin-top: 15px;
+        }
+
+        .queue-item {
+            background: #e3f2fd;
+            padding: 5px 10px;
+            margin: 5px 0;
+            border-radius: 5px;
+            font-size: 12px;
+            display: inline-block;
+            margin-right: 5px;
+        }
+
+        .load-indicator {
+            margin-top: 10px;
+            font-size: 12px;
+            color: #666;
+        }
+
+        .logs-panel {
+            padding: 20px 30px;
+            background: #f8f9fa;
+            border-top: 2px solid #e0e0e0;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+
+        .log-entry {
+            font-size: 12px;
+            padding: 5px;
+            font-family: monospace;
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        .comparison-toggle {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-left: auto;
+        }
+
+        .toggle-switch {
+            position: relative;
+            display: inline-block;
+            width: 50px;
+            height: 24px;
+        }
+
+        .toggle-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #ccc;
+            transition: 0.4s;
+            border-radius: 24px;
+        }
+
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 18px;
+            width: 18px;
+            left: 3px;
+            bottom: 3px;
+            background-color: white;
+            transition: 0.4s;
+            border-radius: 50%;
+        }
+
+        input:checked + .slider {
+            background-color: #667eea;
+        }
+
+        input:checked + .slider:before {
+            transform: translateX(26px);
+        }
+
+        .connection-status {
+            padding: 10px 20px;
+            margin: 10px;
+            border-radius: 8px;
+            font-size: 12px;
+            text-align: center;
+        }
+
+        .status-connected {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .status-disconnected {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.02); }
+            100% { transform: scale(1); }
+        }
+
+        .running {
+            animation: pulse 1s infinite;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>⚡ Multi-Core Load Balancing Scheduler Simulator</h1>
+            <p>Dynamic Process Distribution | Priority + Round Robin | Real-time Load Balancing</p>
+        </div>
+
+        <div id="connectionStatus" class="connection-status">🔌 Checking connection to backend...</div>
+
+        <div class="controls">
+            <div class="control-group">
+                <label>CPU Cores:</label>
+                <select id="numCores">
+                    <option value="2">2 Cores</option>
+                    <option value="4" selected>4 Cores</option>
+                    <option value="6">6 Cores</option>
+                    <option value="8">8 Cores</option>
+                </select>
+                <button class="btn-primary" onclick="initScheduler()">Initialize</button>
+            </div>
+            <div class="control-group">
+                <button class="btn-start" onclick="controlSimulation('start')">▶ Start</button>
+                <button class="btn-pause" onclick="controlSimulation('pause')">⏸ Pause</button>
+                <button class="btn-reset" onclick="controlSimulation('reset')">🔄 Reset</button>
+            </div>
+            <div class="comparison-toggle">
+                <span>Load Balancing:</span>
+                <label class="toggle-switch">
+                    <input type="checkbox" id="balancingToggle" checked onchange="toggleBalancing()">
+                    <span class="slider"></span>
+                </label>
+                <span id="balancingStatus">ON</span>
+            </div>
+        </div>
+
+        <div class="add-process-form">
+            <div class="form-field">
+                <label>Process ID</label>
+                <input type="text" id="pid" placeholder="e.g., P1">
+            </div>
+            <div class="form-field">
+                <label>Burst Time (ms)</label>
+                <input type="number" id="burstTime" placeholder="10-100">
+            </div>
+            <div class="form-field">
+                <label>Priority (0=highest)</label>
+                <input type="number" id="priority" placeholder="0-10" value="5">
+            </div>
+            <button class="btn-primary" onclick="addProcess()">+ Add Process</button>
+        </div>
+
+        <div class="stats-panel" id="statsPanel">
+            <div class="stat-card">
+                <div class="stat-label">🕐 Simulation Time</div>
+                <div class="stat-value">0s</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">⚡ CPU Utilization</div>
+                <div class="stat-value">0%</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">⏱️ Avg Waiting Time</div>
+                <div class="stat-value">0s</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">🔄 Avg Turnaround</div>
+                <div class="stat-value">0s</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">📊 Throughput</div>
+                <div class="stat-value">0 procs/s</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">📦 Completed</div>
+                <div class="stat-value">0</div>
+            </div>
+        </div>
+
+        <div class="cores-container" id="coresContainer">
+            <div style="text-align: center; padding: 40px;">
+                ⚙️ Click "Initialize" to start the simulator
+            </div>
+        </div>
+
+        <div class="logs-panel">
+            <h3>📋 Migration Logs</h3>
+            <div id="logsContainer">
+                <div class="log-entry">No migrations yet...</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const BACKEND_URL = 'http://localhost:5000';
+        let updateInterval = null;
+
+        // Check connection on page load
+        async function checkConnection() {
+            try {
+                const response = await fetch(`${BACKEND_URL}/api/test`);
+                const data = await response.json();
+                if (data.status === 'online') {
+                    document.getElementById('connectionStatus').innerHTML = '✅ Connected to backend successfully!';
+                    document.getElementById('connectionStatus').className = 'connection-status status-connected';
+                    return true;
+                }
+            } catch (error) {
+                document.getElementById('connectionStatus').innerHTML = '❌ Cannot connect to backend! Please make sure backend is running (python app.py)';
+                document.getElementById('connectionStatus').className = 'connection-status status-disconnected';
+                return false;
+            }
+        }
+
+        async function initScheduler() {
+            const connected = await checkConnection();
+            if (!connected) return;
+            
+            const numCores = parseInt(document.getElementById('numCores').value);
+            
+            try {
+                const response = await fetch(`${BACKEND_URL}/api/init`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ num_cores: numCores })
+                });
+                
+                if (response.ok) {
+                    startUpdating();
+                    alert(`✅ Scheduler initialized with ${numCores} cores!`);
+                }
+            } catch (error) {
+                alert('Error: Cannot connect to backend. Make sure it\'s running on port 5000');
+            }
+        }
+
+        async function addProcess() {
+            const pid = document.getElementById('pid').value;
+            const burstTime = parseInt(document.getElementById('burstTime').value);
+            const priority = parseInt(document.getElementById('priority').value);
+            
+            if (!pid || !burstTime) {
+                alert('Please fill all fields');
+                return;
+            }
+            
+            try {
+                await fetch(`${BACKEND_URL}/api/add_process`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ pid, burst_time: burstTime, priority })
+                });
+                
+                document.getElementById('pid').value = '';
+                document.getElementById('burstTime').value = '';
+                document.getElementById('priority').value = '5';
+            } catch (error) {
+                alert('Error adding process');
+            }
+        }
+
+        async function controlSimulation(action) {
+            try {
+                await fetch(`${BACKEND_URL}/api/control`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ action })
+                });
+            } catch (error) {
+                alert('Error controlling simulation');
+            }
+        }
+
+        async function toggleBalancing() {
+            const isEnabled = document.getElementById('balancingToggle').checked;
+            document.getElementById('balancingStatus').innerText = isEnabled ? 'ON' : 'OFF';
+            
+            try {
+                await fetch(`${BACKEND_URL}/api/control`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ action: 'toggle_balancing' })
+                });
+            } catch (error) {
+                alert('Error toggling load balancing');
+            }
+        }
+
+        async function updateUI() {
+            try {
+                const response = await fetch(`${BACKEND_URL}/api/status`);
+                const data = await response.json();
+                
+                if (data.error) {
+                    console.log('Scheduler not initialized');
+                    return;
+                }
+                
+                // Update stats
+                const statsHtml = `
+                    <div class="stat-card">
+                        <div class="stat-label">🕐 Simulation Time</div>
+                        <div class="stat-value">${data.simulation_time}s</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">⚡ CPU Utilization</div>
+                        <div class="stat-value">${data.stats.cpu_utilization}%</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">⏱️ Avg Waiting Time</div>
+                        <div class="stat-value">${data.stats.avg_waiting_time}s</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">🔄 Avg Turnaround</div>
+                        <div class="stat-value">${data.stats.avg_turnaround_time}s</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">📊 Throughput</div>
+                        <div class="stat-value">${data.stats.throughput} procs/s</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">📦 Completed</div>
+                        <div class="stat-value">${data.stats.total_processes}</div>
+                    </div>
+                `;
+                document.getElementById('statsPanel').innerHTML = statsHtml;
+                
+                // Update cores
+                const coresHtml = data.cores.map(core => {
+                    const isOverloaded = core.load > 50;
+                    const progressPercent = core.current_process ? 
+                        ((core.current_process_remaining / core.current_process_remaining) * 100) : 0;
+                    
+                    return `
+                        <div class="core-card ${isOverloaded ? 'overloaded' : ''}">
+                            <div class="core-header">🎯 Core ${core.id + 1}</div>
+                            ${core.current_process ? `
+                                <div class="current-process">
+                                    <div class="process-name">Running: ${core.current_process}</div>
+                                    <div class="progress-bar">
+                                        <div class="progress-fill" style="width: ${100 - (core.current_process_remaining / core.current_process_remaining * 100)}%">
+                                            ${core.current_process_remaining.toFixed(1)}ms
+                                        </div>
+                                    </div>
+                                </div>
+                            ` : '<div class="current-process">💤 Idle</div>'}
+                            <div class="queue-list">
+                                <strong>Queue (${core.queue.length}):</strong>
+                                ${core.queue.map(p => `<span class="queue-item">${p}</span>`).join('')}
+                            </div>
+                            <div class="load-indicator">
+                                📊 Load: ${core.load.toFixed(1)}ms
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+                document.getElementById('coresContainer').innerHTML = coresHtml;
+                
+                // Update logs
+                const logsHtml = data.migration_logs.map(log => 
+                    `<div class="log-entry">${log}</div>`
+                ).join('');
+                document.getElementById('logsContainer').innerHTML = logsHtml || '<div class="log-entry">No migrations yet...</div>';
+            } catch (error) {
+                console.error('Error updating UI:', error);
+            }
+        }
+
+        function startUpdating() {
+            if (updateInterval) clearInterval(updateInterval);
+            updateInterval = setInterval(updateUI, 500);
+        }
+
+        // Auto-initialize on page load after checking connection
+        window.onload = async () => {
+            const connected = await checkConnection();
+            if (connected) {
+                setTimeout(() => {
+                    initScheduler();
+                }, 1000);
+            }
+        };
+    </script>
+</body>
+</html>
